@@ -1,5 +1,5 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
@@ -9,17 +9,14 @@ from sklearn.metrics import classification_report
 from collections import Counter
 
 
-def euclidean(first_point, second_point):
-    return np.sqrt(np.sum((first_point - second_point) ** 2))
-
-
-def knneighbors(k, x_train, x_test, y):
+# собственный метод статистики
+def self_made(k, x_train, x_test, y):
     y_pred = []
 
     for i in range(len(x_test)):
         distances = []
         for j in range(len(x_train)):
-            dist = euclidean(np.array(x_train)[j, :], np.array(x_test)[i])
+            dist = np.sqrt(np.sum((np.array(x_train)[j, :] - np.array(x_test)[i]) ** 2))
             distances.append(dist)
 
         distances = np.array(distances)
@@ -31,90 +28,91 @@ def knneighbors(k, x_train, x_test, y):
 
     return y_pred
 
-
-def knneighbors_scikit(k, X, y):
-    # split dataset
+# реализация через scikit
+def kneighbors_scikit(k, X, y):
+    # разбивка выборки на две подвыборки случайно с размером тестовой выборки 0.3
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
-    # scale dataset
-    scaler = StandardScaler()
-    scaler.fit(x_train)
-
+    # стандартизация
+    scaler = StandardScaler().fit(x_train)
     x_train = scaler.transform(x_train)
     x_test = scaler.transform(x_test)
 
-    # define the model: init K-NN
-    classifier = KNeighborsClassifier(n_neighbors=k)
+    # метод K-ближайших соседей
+    knn = KNeighborsClassifier(n_neighbors=k)
 
-    # fit model
-    classifier.fit(x_train, y_train)
+    # строим модель на обучающем множестве
+    knn.fit(x_train, y_train)
 
-    # predict the test set results
-    y_pred = classifier.predict(x_test)
+    # вызываем метод прогнозирования
+    y_pred = knn.predict(x_test)
 
     return x_train, x_test, y_test, y_test, y_pred
 
-
+# функция обработки данных
 def data_classification(dataset):
+
     X = dataset.iloc[:, 1:3]
     y = dataset.iloc[:, 3]
 
     x_train = dataset.iloc[:(int)(0.7 * len(dataset)), 1:3]
     x_test = dataset.iloc[(int)(0.7 * len(dataset)):, 1:3]
+    y_pred = self_made(7, x_train, x_test, y)
     y_test = dataset.iloc[(int)(0.7 * len(dataset)):, 3]
-
-    X_train, X_test, Y_test, Y_test, Y_pred = knneighbors_scikit(7, X, y)
-    y_pred = knneighbors(7, x_train, x_test, y)
-
-    # check base classification characteristics
-    print('Statistics knneighbors method using scikit')
-    print(classification_report(Y_test, Y_pred))
-
-    print('Statistics knneighbors method using selfmade method')
+    print('Статистика по методу k-NN используя собственный метод')
     print(classification_report(y_test, y_pred))
+
+    _train, X_test, Y_test, Y_test, Y_pred = kneighbors_scikit(7, X, y)
+    print('Статистика по методу k-NN используя scikit')
+    print(classification_report(Y_test, Y_pred))
 
     return x_test, X_test, y_pred, Y_pred
 
-
+# функция отрисовки графиков
 def visualization(x_test, X_test, points_color, points_color_scikit):
     f, ax = plt.subplots(2, 1, figsize=(8, 8))
 
-    ax[0].scatter(x_test['Sweetness'][:], x_test['Crunch'][:], c=points_color)
-    ax[0].set_title('Statistics knneighbors method using selfmade method')
+    ax[0].scatter(x_test['сладость'][:], x_test['хруст'][:], c=points_color)
+    ax[0].set_title('Статистика по методу k-NN используя собственный метод')
 
     ax[1].scatter(X_test[:, 0], X_test[:, 1], c=points_color_scikit)
-    ax[1].set_title('Statistics knneighbors method using scikit')
+    ax[1].set_title('Статистика по методу k-NN используя scikit')
 
     plt.show()
 
 
-# read dataset
-dataset = pd.read_csv('data.csv')
+# читаем csv файл
+dataset = pd.read_csv('input_data.csv')
+# обрабатываем данные и получаем значения для постройки графика
+print('Статистика с исходными данными')
 x_test, X_test, y_pred, Y_pred = data_classification(dataset)
 
-# define color for each category
-points_color = [label.replace("Fruit", "orange", 1)
-                .replace("Vegetable", "green", 1)
-                .replace("Protein", "brown", 1) for label in y_pred]
+# определяем цвета для точек на графике
+points_color = [label.replace("Фрукт", "orange", 1)
+                .replace("Овощ", "green", 1)
+                .replace("Протеин", "brown", 1) for label in y_pred]
 
-points_color_scikit = [label.replace("Fruit", "orange", 1)
-                       .replace("Vegetable", "green", 1)
-                       .replace("Protein", "brown", 1) for label in Y_pred]
+points_color_scikit = [label.replace("Фрукт", "orange", 1)
+                       .replace("Овощ", "green", 1)
+                       .replace("Протеин", "brown", 1) for label in Y_pred]
 
-# build plots to visualize results of methods usage
+# рисуем график
 visualization(x_test, X_test, points_color, points_color_scikit)
 
+# читаем данные с дополнительным классом
 extended_dataset = pd.read_csv('extended_data.csv')
+# обрабатываем данные с дополнительным классом
+print('Статистика данных с дополнительным классом')
 x_test, X_test, y_pred, Y_pred = data_classification(extended_dataset)
 
-points_color = [label.replace("Fruit", "orange", 1)
-                     .replace("Vegetable", "green", 1)
-                     .replace("Protein", "brown", 1)
-                     .replace("Berry", "red", 1) for label in y_pred]
+points_color = [label.replace("Фрукт", "orange", 1)
+                     .replace("Овощ", "green", 1)
+                     .replace("Протеин", "brown", 1)
+                     .replace("Снэки", "yellow", 1) for label in y_pred]
 
-points_color_scikit = [label.replace("Fruit", "orange", 1)
-                            .replace("Vegetable", "green", 1)
-                            .replace("Protein", "brown", 1)
-                            .replace("Berry", "red", 1) for label in Y_pred]
-
+points_color_scikit = [label.replace("Фрукт", "orange", 1)
+                            .replace("Овощ", "green", 1)
+                            .replace("Протеин", "brown", 1)
+                            .replace("Снэки", "yellow", 1) for label in Y_pred]
+# рисуем график расширенных данных
 visualization(x_test, X_test, points_color, points_color_scikit)
